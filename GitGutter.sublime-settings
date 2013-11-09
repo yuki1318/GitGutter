@@ -27,5 +27,10 @@
   // Add --patience switch to git diff command. See
   // http://bramcohen.livejournal.com/73318.html for 
   // an example of why you might need this.
-  "patience": true
+  "patience": true,
+
+  // Do not set GitGutter icons in these regions
+  // Useful for making sure GitGutter does not override other
+  // regions, (e.g. Bookmarks, Linter/BracketHighlighter icons.)
+  "protected_regions": []
 }
