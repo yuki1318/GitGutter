@@ -1,5 +1,6 @@
 import tempfile
 import time
+import sublime
 
 
 class ViewCollection:
@@ -7,6 +8,7 @@ class ViewCollection:
     git_times = {}
     git_files = {}
     buf_files = {}
+    pendings  = {}
     compare_against = "HEAD"
 
     @staticmethod
@@ -19,6 +21,29 @@ class ViewCollection:
         handler = ViewCollection.views[key] = GitGutterHandler(view)
         handler.reset()
         return handler
+
+    @staticmethod
+    def debounce_add(view):
+        def check(view):    
+            key = ViewCollection.get_key(view)
+            lines = len(view.lines(sublime.Region(0,view.size())))
+            if key in ViewCollection.pendings:
+                pend = ViewCollection.pendings[key]
+                if time.time() - pend["time"] > 0.1 or lines != pend["lines"]:
+                    del ViewCollection.pendings[key]
+                    ViewCollection.add(view)
+                else:
+                    sublime.set_timeout(lambda: check(view), 50)
+
+        key = ViewCollection.get_key(view)
+        if key in ViewCollection.pendings:
+            pend = ViewCollection.pendings[key]
+            pend["time"] = time.time()
+        else:
+            lines = len(view.lines(sublime.Region(0,view.size())))
+            ViewCollection.pendings[key] = {"time": time.time(), "lines": lines}
+            sublime.set_timeout(lambda: check(view), 50)
+            ViewCollection.add(view)
 
     @staticmethod
     def git_path(view):

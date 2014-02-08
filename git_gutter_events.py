@@ -15,10 +15,17 @@ class GitGutterEvents(sublime_plugin.EventListener):
 
     # Synchronous
 
+    def on_post_text_command(self, view, command_name, args):
+        # There is no async version of this command so we always use it
+        # print ("text command", command_name)
+        run_list = ["cut","paste"]
+        if command_name in run_list:
+            ViewCollection.add(view)
+
     def on_modified(self, view):
         if self.settings_loaded():
             if not self.non_blocking and self.live_mode:
-                ViewCollection.add(view)
+                ViewCollection.debounce_add(view)
 
     def on_clone(self, view):
         if self.settings_loaded():
@@ -45,7 +52,7 @@ class GitGutterEvents(sublime_plugin.EventListener):
     def on_modified_async(self, view):
         if self.settings_loaded():
             if self.non_blocking and self.live_mode:
-                ViewCollection.add(view)
+                ViewCollection.debounce_add(view)
 
     def on_clone_async(self, view):
         if self.settings_loaded():
