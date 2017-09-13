@@ -69,8 +69,8 @@ class GitGutterCommand(sublime_plugin.TextCommand):
         elif not view.window():
             state = 2
         # Don't handle scratch views
-        elif view.is_scratch():
-            state = 3
+        # elif view.is_scratch():
+            # state = 3
         # Don't handle readonly views
         elif view.is_read_only():
             state = 4
