@@ -50,9 +50,10 @@ class EventListener(sublime_plugin.EventListener):
         Arguments:
             view (View): The view which received the event.
         """
-        key = view.id()
-        if key in self.view_events:
-            del self.view_events[key]
+        try:
+            del self.view_events[view.id()]
+        except KeyError:
+            pass
 
     def on_modified(self, view):
         """Run git_gutter for modified visible view.
@@ -102,15 +103,15 @@ class EventListener(sublime_plugin.EventListener):
         # don't let the popup flicker / fight with other packages
         if view.is_popup_visible():
             return
-        key = view.id()
-        if key not in self.view_events:
+        try:
+            view_settings = self.view_events[view.id()].settings
+        except KeyError:
             return
         # check if hover is enabled
-        settings = self.view_events[key].settings
-        if not settings.get('enable_hover_diff_popup'):
+        if not view_settings.get('enable_hover_diff_popup'):
             return
         # check protected regions
-        keys = tuple(settings.get('diff_popup_protected_regions'))
+        keys = tuple(view_settings.get('diff_popup_protected_regions'))
         points = (view.line(reg).a for key in keys for reg in view.get_regions(key))
         if point in points:
             return
@@ -126,9 +127,17 @@ class EventListener(sublime_plugin.EventListener):
             event_id (int): The event identifier
         """
         key = view.id()
-        if key not in self.view_events:
-            self.view_events[key] = ViewEventListener(view)
-        self.view_events[key].push(event_id)
+        try:
+            self.view_events[key].push(event_id)
+        except KeyError:
+            if view.buffer_id():
+                new_listener = ViewEventListener(view)
+                new_listener.push(event_id)
+                self.view_events[key] = new_listener
+            # do garbage connection
+            for vid in [vid for vid, listener in self.view_events.items()
+                        if listener.view.buffer_id() == 0]:
+                del self.view_events[vid]
 
 
 class ViewEventListener(object):

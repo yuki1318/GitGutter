@@ -1,5 +1,8 @@
+# -*- coding: utf-8 -*-
+import errno
 import os
 import tempfile
+import time
 
 # The folder to place all temporary files into.
 TEMP_DIR = os.environ.get('XDG_RUNTIME_DIR')
@@ -13,6 +16,31 @@ else:
         TEMP_DIR += '.%s' % os.getuid()
 
 
+def plugin_loaded():
+    """Sublime Text plugin loaded callback.
+
+    Remove all temporary files older than 2 days. Looks like in some cases some
+    temporary files are not deleted, if ST is closed. So try to delete too old
+    ones upon startup. Wait 2 days to reduce the chance of deleting temporary
+    files of another open ST instance.
+    """
+    now = time.time()
+    max_age = 48 * 60 * 60
+    try:
+        files = os.listdir(TEMP_DIR)
+    except FileNotFoundError:
+        # tempfolder does not exist
+        pass
+    else:
+        for name in files:
+            try:
+                path = os.path.join(TEMP_DIR, name)
+                if now - os.path.getatime(path) > max_age:
+                        os.remove(path)
+            except OSError:
+                pass
+
+
 class TempFile(object):
     """A temporary file object which allows shared reading.
 
@@ -24,22 +52,25 @@ class TempFile(object):
 
     def __init__(self, mode='r'):
         """Initialize TempFile object."""
-        try:
-            os.mkdir(TEMP_DIR)
-        except FileExistsError:
-            pass
         self.name = tempfile.mktemp(dir=TEMP_DIR)
-        self._mode = mode
         self._file = None
+        self._mode = mode
         # Cache unlink to keep it available even though the 'os' module is
         # already None'd out whenever __del__() is called.
         # See python stdlib's tempfile.py for details.
         self._unlink = os.unlink
 
+        try:
+            # ensure cache directory exists with write permissions
+            os.makedirs(TEMP_DIR, 0o700)
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise
+
     def __del__(self):
         """Destroy the TempFile object and remove the file from disk."""
-        self.close()
         try:
+            self.close()
             self._unlink(self.name)
         except OSError:
             pass
@@ -63,3 +94,6 @@ class TempFile(object):
         if self._file is not None:
             self._file.close()
             self._file = None
+
+    def tell(self):
+        return self._file.tell()

@@ -3,8 +3,9 @@ import os.path
 import sublime
 import sublime_plugin
 
-STVER = int(sublime.version())
-ST3 = STVER >= 3000
+from .utils import PLATFORM
+from .utils import STVER
+from .utils import ST3
 
 
 def get(key, default=None):
@@ -150,9 +151,7 @@ class ViewSettings(object):
         if value is None:
             value = get('git_binary')
         if isinstance(value, dict):
-            git_binary = value.get(sublime.platform())
-            if not git_binary:
-                git_binary = value.get('default')
+            git_binary = value.get(PLATFORM) or value.get('default')
         else:
             git_binary = value
         return os.path.expandvars(git_binary) if git_binary else 'git'
@@ -195,13 +194,13 @@ class GitGutterOpenFileCommand(sublime_plugin.ApplicationCommand):
             'osx': 'OSX',
             'windows': 'Windows',
             'linux': 'Linux',
-        }[sublime.platform()]
+        }[PLATFORM]
         file = file.replace('${platform}', platform_name)
         sublime.run_command('open_file', {'file': file})
 
     @staticmethod
     def is_visible():
-        """Return True to to show the command in command pallet and menu."""
+        """Return True to to show the command in command palette and menu."""
         return STVER < 3124
 
 
@@ -218,5 +217,5 @@ class GitGutterEditSettingsCommand(sublime_plugin.ApplicationCommand):
 
     @staticmethod
     def is_visible():
-        """Return True to to show the command in command pallet and menu."""
+        """Return True to to show the command in command palette and menu."""
         return STVER >= 3124
