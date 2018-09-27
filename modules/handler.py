@@ -21,6 +21,7 @@ from .promise import Promise
 from .promise import PromiseError
 from .temp import TempFile
 from .utils import WIN32
+from .view import GitGutterViewCache
 
 # The view class has a method called 'change_count()'
 _HAVE_VIEW_CHANGE_COUNT = hasattr(sublime.View, "change_count")
@@ -64,12 +65,10 @@ class GitGutterHandler(object):
         self.settings = settings
         # attached view being tracked
         self.view = view
+        # the view content being mirrored to disk
+        self.view_cache = GitGutterViewCache(view)
         # cached view file name to detect renames
         self._view_file_name = None
-        # path to temporary file with view content
-        self._view_temp_file = None
-        # last view change count
-        self._view_change_count = -1
         # path to temporary file with git index content
         self._git_temp_file = None
         # temporary file contains up to date information
@@ -78,8 +77,6 @@ class GitGutterHandler(object):
         self._git_tree = None
         # relative file path in work tree
         self._git_path = None
-        # cached branch status
-        self._git_status = None
         # file is part of the git repository
         self.git_tracked = False
         # compare target commit hash
@@ -124,31 +121,40 @@ class GitGutterHandler(object):
             self._git_wsl = WIN32 and self._git_binary.startswith('/')
 
         if self._git_version is None:
+            is_missing = self._git_binary in self._missing_binaries
+            git_version = ''
+
             # Query git version synchronously
             try:
                 proc = self.popen([self._git_binary, '--version'])
                 if _HAVE_TIMEOUT:
-                    proc.wait(0.5)
+                    proc.wait(1.0)
                 git_version = proc.stdout.read().decode('utf-8')
 
             except TimeoutExpired as error:
                 proc.kill()
                 git_version = proc.stdout.read().decode('utf-8')
+                if not is_missing and self.settings.get('debug'):
+                    utils.log_message(str(error))
 
             except Exception as error:
-                git_version = ''
+                if not is_missing and self.settings.get('debug'):
+                    utils.log_message(str(error))
 
             # Parse version string like (git version 2.12.2.windows.1)
             match = re.match(r'git version (\d+)\.(\d+)\.(\d+)', git_version)
             if match:
                 # PEP-440 conform git version (major, minor, patch)
                 self._git_version = tuple(int(g) for g in match.groups())
-                if self._git_binary in self._missing_binaries:
+                if is_missing:
                     utils.log_message(self._git_binary + ' is back on duty!')
                     self._missing_binaries.discard(self._git_binary)
 
-            elif self._git_binary not in self._missing_binaries:
+            elif not is_missing:
                 utils.log_message(self._git_binary + ' not found or working!')
+                if self.settings.get('debug'):
+                    utils.log_message(
+                        '"git --version" returned "{}"'.format(git_version))
                 self._missing_binaries.add(self._git_binary)
 
         return self._git_version
@@ -211,6 +217,11 @@ class GitGutterHandler(object):
         """
         return path.translate_to_wsl(filename) if self._git_wsl else filename
 
+    def is_rebase_active(self):
+        """Returns True if a rebase is active in the repository."""
+        return os.path.exists(
+            os.path.join(self._git_tree, '.git', 'rebase-merge'))
+
     def get_compare_against(self):
         """Return the compare target for a view.
 
@@ -263,30 +274,6 @@ class GitGutterHandler(object):
             comparing = comparing.replace(repl, '')
         return comparing
 
-    def _get_view_encoding(self):
-        """Read view encoding and transform it for use with python.
-
-        This method reads `origin_encoding` used by ConvertToUTF8 plugin and
-        goes on with ST's encoding setting if required. The encoding is
-        transformed to work with python's `codecs` module.
-
-        Returns:
-            string: python compatible view encoding
-        """
-        encoding = self.view.settings().get('origin_encoding')
-        if not encoding:
-            encoding = self.view.encoding()
-            if encoding == "Undefined":
-                encoding = self.view.settings().get('default_encoding')
-            begin = encoding.find('(')
-            if begin > -1:
-                encoding = encoding[begin + 1:-1]
-            encoding = encoding.replace('with BOM', '')
-            encoding = encoding.replace('Windows', 'cp')
-            encoding = encoding.replace('-', '_')
-        encoding = encoding.replace(' ', '')
-        return encoding
-
     def in_repo(self):
         """Return true, if the most recent `git show` returned any content.
 
@@ -295,64 +282,6 @@ class GitGutterHandler(object):
         """
         return self.git_tracked
 
-    def view_file_changed(self):
-        """Check whether the content of the view changed."""
-        return (
-            _HAVE_VIEW_CHANGE_COUNT and
-            self._view_change_count != self.view.change_count()
-        )
-
-    def invalidate_view_file(self):
-        """Reset change_count and force writing the view cache file.
-
-        The view content is written to a temporary file for use with git diff,
-        if the view.change_count() has changed. This method forces the update
-        on the next call of update_view_file().
-        """
-        self._view_change_count = -1
-
-    def update_view_file(self):
-        """Write view's content to a temporary file as source for git diff.
-
-        The file is updated only if the view.change_count() has changed to
-        reduce the number of required disk writes.
-
-        Returns:
-            bool: True indicates updated file.
-                  False is returned if file is up to date.
-        """
-        change_count = 0
-        if _HAVE_VIEW_CHANGE_COUNT:
-            # write view buffer to file only, if changed
-            change_count = self.view.change_count()
-            if self._view_change_count == change_count:
-                return False
-        # Read from view buffer
-        chars = self.view.size()
-        region = sublime.Region(0, chars)
-        contents = self.view.substr(region)
-        # Try conversion
-        try:
-            encoding = self._get_view_encoding()
-            encoded = contents.encode(encoding)
-        except (LookupError, UnicodeError):
-            # Fallback to utf8-encoding
-            encoded = contents.encode('utf-8')
-        try:
-            # Write the encoded content to file
-            if not self._view_temp_file:
-                self._view_temp_file = TempFile(mode='wb')
-            with self._view_temp_file as file:
-                if self.view.encoding() == "UTF-8 with BOM":
-                    file.write(codecs.BOM_UTF8)
-                file.write(encoded)
-        except OSError as error:
-            print('GitGutter failed to create view cache: %s' % error)
-            return False
-        # Update internal change counter after job is done
-        self._view_change_count = change_count
-        return True
-
     def is_git_file_valid(self):
         """Return True if temporary file is marked up to date."""
         return self._git_temp_file_valid
@@ -360,7 +289,6 @@ class GitGutterHandler(object):
     def invalidate_git_file(self):
         """Invalidate all cached results of recent git commands."""
         self._git_temp_file_valid = False
-        self._git_status = None
         self._git_env = None
 
     def update_git_file(self):
@@ -445,11 +373,11 @@ class GitGutterHandler(object):
                 the modifications of the file.
             None: Returns None if nothing has changed since last call.
         """
-        updated_view_file = self.update_view_file()
+        updated_view_file = self.view_cache.update()
         if not updated_git_file and not updated_view_file:
             return self.process_diff(self._git_diff_cache)
 
-        if not self._git_temp_file or not self._view_temp_file:
+        if not self._git_temp_file:
             return self.process_diff(self._git_diff_cache)
 
         return self.execute_async(list(filter(None, (
@@ -461,11 +389,11 @@ class GitGutterHandler(object):
             self.settings.ignore_whitespace,
             self.settings.diff_algorithm,
             self.translate_path_to_wsl(self._git_temp_file.name),
-            self.translate_path_to_wsl(self._view_temp_file.name)
+            self.translate_path_to_wsl(self.view_cache.name)
         ))), decode=False).then(self._decode_diff)
 
     def _decode_diff(self, results):
-        encoding = self._get_view_encoding()
+        encoding = self.view_cache.python_friendly_encoding()
         try:
             decoded_results = results.decode(encoding)
         except AttributeError:
@@ -703,9 +631,6 @@ class GitGutterHandler(object):
 
     def git_branch_status(self):
         """Query the current status of the file's repository."""
-        if self._git_status:
-            return Promise.resolve(self._git_status)
-
         def parse_output(output):
             """Parse output of git status and cache the value."""
             added, deleted, modified, staged = 0, 0, 0, 0
@@ -725,7 +650,7 @@ class GitGutterHandler(object):
             except:
                 branch, remote, ahead, behind = 'unknown', None, 0, 0
 
-            self._git_status = {
+            return {
                 'branch': branch,
                 'remote': remote,
                 'ahead': int(ahead or 0),
@@ -735,7 +660,6 @@ class GitGutterHandler(object):
                 'modified_files': modified,
                 'staged_files': staged
             }
-            return self._git_status
 
         return self.execute_async([
             self._git_binary,
@@ -751,6 +675,18 @@ class GitGutterHandler(object):
         """
         return self.execute_async([
             self._git_binary, 'rev-parse', compare_against])
+
+    def git_blame(self, row):
+        """Call git blame to find out who changed a specific line of code"""
+        return self.execute_async([
+            self._git_binary,
+            '-c', 'core.autocrlf=input',
+            '-c', 'core.eol=lf',
+            '-c', 'core.safecrlf=false',
+            'blame', '-p', '-L%d,%d' % (row + 1, row + 1),
+            '--contents', self.translate_path_to_wsl(self.view_cache.name),
+            '--', self._git_path
+        ])
 
     def git_read_file(self, commit):
         """Read the content of the file from specific commit.
