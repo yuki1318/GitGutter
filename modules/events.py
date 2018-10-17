@@ -275,7 +275,7 @@ class BlameEventListener(sublime_plugin.EventListener):
 
     def on_selection_modified(self, view):
         """Run blame if the caret moves to another row."""
-        self._run_blame(view, False)
+        # self._run_blame(view, False)
 
     def _run_blame(self, view, force):
         """Run blame if the caret moves to another row."""
