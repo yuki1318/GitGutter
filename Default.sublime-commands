@@ -10,6 +10,10 @@
         "args": { "enabled": false }
     },
     {
+        "caption": "GitGutter: Show Line Annotation",
+        "command": "git_gutter_blame"
+    },
+    {
         "caption": "GitGutter: Show Diff Popup",
         "command": "git_gutter_diff_popup"
     },
@@ -84,7 +88,7 @@
         "command": "git_gutter_edit_settings",
         "args": {
             "base_file": "${packages}/GitGutter/Default (${platform}).sublime-keymap",
-            "default": "// GitGutter Key Bindings - User\n{\n\t$0\n}\n"
+            "default": "// Key Bindings - User\n[\n\t$0\n]\n"
         }
     },
     {

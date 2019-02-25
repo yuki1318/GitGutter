@@ -90,7 +90,8 @@
         "bookmarks",
         "lsp_error",
         "lsp_warning",
-        "lsp_info"
+        "lsp_info",
+        "ecc"
     ],
 
     // Show GitGutter information in the minimap
@@ -153,6 +154,14 @@
     //   "2"      -- align of second ruler
     //   ...
     "line_annotation_ruler": false,
+
+    // (ST3, Build 3124+ only)
+    // Whether to ignore whitespace changes when showing line annotations.
+    //
+    // Valid values are:
+    //   "false"  -- don't ignore whitespace changes (default)
+    //   "true"   -- ignore whitespace changes
+    "line_annotation_ignore_whitespace": false,
 
     // LINE ANNOTATION TEXT TEMPLATE
     // If the value is an array it is joined to a single string and passed to
