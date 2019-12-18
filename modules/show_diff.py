@@ -1,9 +1,4 @@
-# -*- coding: utf-8 -*-
 import sublime
-
-from .utils import ST3
-
-_ICON_EXT = '.png' if ST3 else ''
 
 
 class GitGutterShowDiff(object):
@@ -92,6 +87,8 @@ class GitGutterShowDiff(object):
             if not self.git_handler.view_cache.is_changed():
                 for name, region in zip(self.region_names, regions):
                     self._bind_regions(name, region)
+                self.git_handler.view.erase_regions('git_gutter_ignored')
+                self.git_handler.view.erase_regions('git_gutter_untracked')
             self._update_status(
                 'modified' if contents[0] else 'committed', contents)
         except IndexError:
@@ -321,5 +318,4 @@ class GitGutterShowDiff(object):
         else:
             arrow = ''
         return ''.join((
-            self.git_handler.settings.theme_path, '/',
-            event, arrow, _ICON_EXT))
+            self.git_handler.settings.theme_path, '/', event, arrow, '.png'))
