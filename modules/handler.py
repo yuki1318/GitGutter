@@ -115,11 +115,11 @@ class GitGutterHandler(object):
             try:
                 proc = self.popen([self._git_binary, '--version'])
                 proc.wait(1.0)
-                git_version = proc.stdout.read().decode('utf-8')
+                git_version = proc.stdout.read().decode('utf-8', 'replace')
 
             except subprocess.TimeoutExpired as error:
                 proc.kill()
-                git_version = proc.stdout.read().decode('utf-8')
+                git_version = proc.stdout.read().decode('utf-8', 'replace')
                 if not is_missing and self.settings.get('debug'):
                     utils.log_message(str(error))
 
@@ -403,7 +403,7 @@ class GitGutterHandler(object):
             decoded_results = ''
         except UnicodeError:
             try:
-                decoded_results = results.decode('utf-8')
+                decoded_results = results.decode('utf-8', 'replace')
             except UnicodeDecodeError:
                 decoded_results = ''
         except LookupError:
@@ -758,7 +758,7 @@ class GitGutterHandler(object):
                         # resolve with 0 bytes if file was not found in repo.
                         return resolve(0)
                     return resolve(PromiseError("git returned error %d: %s" % (
-                        proc.returncode, proc.stderr.read().decode('utf-8'))))
+                        proc.returncode, proc.stderr.read().decode('utf-8', 'replace'))))
 
             except Exception as error:
                 return resolve(PromiseError(str(error)))
@@ -799,11 +799,11 @@ class GitGutterHandler(object):
                 # 0 = ok, 128 = file not found
                 if proc.returncode not in (0, 128):
                     utils.log_message('%s failed with "%s"' % (
-                        ' '.join(args), proc.stderr.read().decode('utf-8').strip()))
+                        ' '.join(args), proc.stderr.read().decode('utf-8', 'replace').strip()))
 
             # return decoded ouptut using utf-8 or binary output
             if decode and chunk is not None:
-                return resolve(chunk.decode('utf-8').strip())
+                return resolve(chunk.decode('utf-8', 'replace').strip())
             return resolve(chunk)
 
         return execute_async(task_fn, decode, args)
