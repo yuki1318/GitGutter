@@ -1,0 +1,8 @@
+1.11.2:
+
+  Fix:
+   - Status bar text template key name
+
+  Enhancement:
+   - Show commit hash in blame annotations
+   - Use new line annotations of ST4
