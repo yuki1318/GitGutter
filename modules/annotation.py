@@ -17,7 +17,7 @@ class SimpleLineAnnotationTemplate(object):
     variables = frozenset(['line_author', 'line_author_age', 'line_summary'])
 
     @classmethod
-    def render(cls, **kwargs):
+    def render(cls, kwargs):
         """Render line annotation using a static template.
 
         Arguments:
@@ -28,7 +28,7 @@ class SimpleLineAnnotationTemplate(object):
         Returns:
             string: The formatted annotation message.
         """
-        return cls.TEMPLATE.format(kwargs)
+        return cls.TEMPLATE.format(**kwargs)
 
 
 class GitGutterLineAnnotationST3(object):
@@ -159,7 +159,7 @@ class GitGutterLineAnnotationST4(object):
     <body id="gitgutter-line-annotation">
         <style>
             html, body {{
-                background-color: transparent;
+                background-color: var(--background);
                 color: {foreground};
                 font-style: {font_style};
                 margin: 0;

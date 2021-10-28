@@ -1,0 +1,7 @@
+1.11.6:
+
+  Other:
+   - Update dependencies.json
+
+  Enhancement:
+   - Cleanup cache on_exit()
