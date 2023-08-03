@@ -1,0 +1,9 @@
+1.11.8:
+-------
+
+  Fix:
+   - Support info displaying no longer needed deps
+   - Don't use extenral diff tool when performing diff (#573)
+   - Broken link in troubleshooting.md (#574)
+   - WSL path translation
+   - Compatibility issue with python 3.8

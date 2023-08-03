@@ -186,7 +186,7 @@ class GitGutterHandler(object):
                 True if not running in WSL mode or path is a local drive
                 False if the working tree is no local drive in WSL mode.
         """
-        return not self._git_wsl or self._git_tree and self._git_tree[1] == ':'
+        return not self._git_wsl or path.is_translatable_to_wsl(self._git_tree)
 
     def translate_path_to_wsl(self, filename):
         """Translate filename to a WSL compatible unix path on demand.
@@ -390,7 +390,7 @@ class GitGutterHandler(object):
             '-c', 'core.autocrlf=input',
             '-c', 'core.eol=lf',
             '-c', 'core.safecrlf=false',
-            'diff', '-U0', '--no-color', '--no-index',
+            'diff', '-U0', '--no-color', '--no-index', '--no-ext-diff',
             self.settings.ignore_whitespace,
             self.settings.diff_algorithm,
             self.translate_path_to_wsl(self._git_temp_file.name),
