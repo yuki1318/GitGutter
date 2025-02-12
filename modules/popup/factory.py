@@ -162,6 +162,9 @@ def _show_diff_popup_impl(git_gutter, line, highlight_diff, flags, diff_info):
             .format(**buttons)
         )
 
+    # msg = '\n\nGitGutter: {0}'.format(content)
+    # print(msg)
+
     # common arguments used to create or update the popup
     popup_kwargs = {
         'view': view,

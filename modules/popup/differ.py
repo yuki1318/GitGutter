@@ -147,7 +147,7 @@ def _dump_line(tag, x):
     """Generate comparison results for a same-tagged range."""
     yield '<p>'
     yield from _dump_chunk(tag, x)
-    yield '<p>'
+    yield '</p>'
 
 
 def _dump_chunk(tag, x):
