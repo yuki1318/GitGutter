@@ -1,6 +1,0 @@
-1.11.7:
-
-  Fix:
-   - Add missing `markupsafe` dependency
-   - SimpleLineAnnotationTemplate no longer raises errors
-   - Fix annotation background

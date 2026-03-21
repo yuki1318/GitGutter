@@ -1,5 +1,0 @@
-1.11.1
-======
-
-  Fix:
-   - A saved as.. file is compared against the original one (#549)
