@@ -1,7 +1,0 @@
-1.11.5:
-
-  Enhancement:
-   - Use system date template in annotations
-
-  Fix:
-   - Support string values in line annotation settings
