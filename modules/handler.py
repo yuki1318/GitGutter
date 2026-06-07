@@ -120,11 +120,11 @@ class GitGutterHandler(object):
             try:
                 proc = self.popen([self._git_binary, '--version'])
                 proc.wait(1.0)
-                git_version = proc.stdout.read().decode('utf-8')
+                git_version = proc.stdout.read().decode('utf-8', 'replace')
 
             except subprocess.TimeoutExpired as error:
                 proc.kill()
-                git_version = proc.stdout.read().decode('utf-8')
+                git_version = proc.stdout.read().decode('utf-8', 'replace')
                 if not is_missing and self.settings.get('debug'):
                     utils.log_message(str(error))
 
@@ -411,7 +411,7 @@ class GitGutterHandler(object):
         if content is not None:
             encoding = self.view_cache.python_friendly_encoding()
             try:
-                return content.decode(encoding)
+                return content.decode(encoding, 'replace')
             except Exception:
                 detected_encoding = 'utf-8'
                 if charset_from_bytes is not None:
@@ -771,7 +771,7 @@ class GitGutterHandler(object):
                         # resolve with 0 bytes if file was not found in repo.
                         return resolve(0)
                     return resolve(PromiseError("git returned error %d: %s" % (
-                        proc.returncode, proc.stderr.read().decode('utf-8'))))
+                        proc.returncode, proc.stderr.read().decode('utf-8', 'replace'))))
 
             except Exception as error:
                 return resolve(PromiseError(str(error)))
@@ -812,7 +812,7 @@ class GitGutterHandler(object):
                 # 0 = ok, 128 = file not found
                 if proc.returncode not in (0, 128):
                     utils.log_message('%s failed with "%s"' % (
-                        ' '.join(args), proc.stderr.read().decode('utf-8').strip()))
+                        ' '.join(args), proc.stderr.read().decode('utf-8', 'replace').strip()))
 
             if decode and chunk is not None:
                 chunk = self._decode_content(chunk).strip()
