@@ -713,7 +713,7 @@ class GitGutterHandler(object):
         ] + ignore_ws + [
             '--contents', self.translate_path_to_wsl(self.view_cache.name),
             '--', self._git_path
-        ])
+        ], decode=False)
 
     def git_read_file(self, commit):
         """Read the content of the file from specific commit.

@@ -62,6 +62,9 @@ def _render_blame(git_gutter, show_inline, show_status, contents):
     """Decode the git blame output and update status bar and phantoms."""
     if not contents:
         return
+    # Decode git blame output as UTF-8 (git always outputs UTF-8)
+    if isinstance(contents, bytes):
+        contents = contents.decode('utf-8', 'replace')
     contents = contents.split('\n')
     # decode first line <commit> <row committed> <row modified> <num>
     tokens = contents[0].split(' ')
